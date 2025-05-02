@@ -1,5 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { Task } from "../../tasks/entities/task.entity";
+import { Subtask } from "src/sub-task/entities/sub-task.entity";
 
 @Entity()
 export class Estados{
@@ -12,5 +13,9 @@ export class Estados{
 
     @OneToMany( () => Task,
         ( task ) => task.estados)
-    tasks: Task[];  
+    tasks: Task[];
+    
+    @OneToMany(() => Subtask,
+        (subtask) => subtask.estados)
+    subtasks: Subtask[]
 }

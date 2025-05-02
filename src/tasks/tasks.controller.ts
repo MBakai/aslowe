@@ -9,19 +9,17 @@ import { GetUser } from 'src/auth/decorators/get-user.decorator';
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
-  @Post()
-  @Auth()
+  @Post('create-task')
+  @Auth('usuario')
   create(@Body() createTaskDto: CreateTaskDto,
         @GetUser() user: User) {
-    return this.tasksService.create(createTaskDto, user);
+    return this.tasksService.createTask(createTaskDto, user);
   }
 
-  @Get()
-  @Auth()
-  findAll(@GetUser() user: User) {
-    // console.log(paginationDto);
-    
-    return this.tasksService.getTasksAll(user);
+  @Get('listarTasks')
+  @Auth('usuario')
+  getTaskUser( @GetUser() user: User){
+    return this.tasksService.listarTaskUser(user)  
   }
 
 

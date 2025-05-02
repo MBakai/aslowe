@@ -5,6 +5,9 @@ import { AuthModule } from './auth/auth.module';
 import { GeneroModule } from './genero/genero.module';
 import { EstadosModule } from './estados/estados.module';
 import { TasksModule } from './tasks/tasks.module';
+import { RolesModule } from './roles/roles.module';
+import { ColaboradoresModule } from './colaboradores/colaboradores.module';
+import { SubTaskModule } from './sub-task/sub-task.module';
 
 @Module({
   imports: [
@@ -26,7 +29,10 @@ import { TasksModule } from './tasks/tasks.module';
     AuthModule,
     GeneroModule,
     EstadosModule,
-    TasksModule
+    TasksModule,
+    RolesModule,
+    ColaboradoresModule,
+    SubTaskModule
     
   ],
   controllers: [],

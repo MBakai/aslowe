@@ -1,17 +1,18 @@
 import { User } from "src/auth/entities/user.entity";
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
-@Entity('genero')
-export class Genero{
+@Entity('roles')
+export class Roles {
 
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column('text')
-    nombre: string;
+    rolNombre: string;
 
-    @OneToMany( 
+    @OneToMany(
         () => User,
-        user  => user.genero)
-    users: User[];
+        user => user.role
+      )
+      users: User[];
 }

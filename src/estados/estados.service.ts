@@ -14,7 +14,7 @@ export class EstadosService {
 
 
   async onApplicationBootstrap(){
-    const estadoPorDefecto = ['Pendiente', 'En-proceso', 'Terminado'];
+    const estadoPorDefecto = ['creado', 'Pendiente', 'En-proceso', 'Terminado'];
 
     for( const nombre of estadoPorDefecto ){
       const estadoExiste = await this.estadoRepository.findOneBy( { nombre } )

@@ -7,12 +7,14 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GeneroModule } from 'src/genero/genero.module';
-import { UserTask } from '../user-task/user-task.entity';
-import { JwtStrategy } from './strategy';
+import { Colaborador } from 'src/colaboradores/entities/colaborador.entity';
+import { Roles } from 'src/roles/entities/roles.entity';
+import { JwtStrategy } from './strategy/jwt-strategy';
+import { Subtask } from 'src/sub-task/entities/sub-task.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ User, UserTask]),
+    TypeOrmModule.forFeature([ User, Roles, Colaborador, Subtask]),
     
     PassportModule.register({defaultStrategy: 'jwt'}),
 
@@ -28,7 +30,7 @@ import { JwtStrategy } from './strategy';
         }
       }
     }),
-    GeneroModule
+    GeneroModule, Roles, Colaborador
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

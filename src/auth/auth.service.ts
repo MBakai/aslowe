@@ -9,7 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interface/jwt.payload.interface';
 import { LoginUserDto } from './dto/login.user.dto';
 import { Genero } from 'src/genero/entities/genero.entitys';
-
+import { Roles } from 'src/roles/entities/roles.entity';
+import { Colaborador } from 'src/colaboradores/entities/colaborador.entity';
 @Injectable()
 export class AuthService {
 
@@ -20,57 +21,103 @@ export class AuthService {
     private readonly jwtService: JwtService,
     
     @InjectRepository(Genero)
-    private readonly generoRepository: Repository<Genero>
+    private readonly generoRepository: Repository<Genero>,
 
-    
+    @InjectRepository(Roles)
+    private readonly rolesRepository: Repository<Roles>,
+
   ){}
 
   // ════════════════════════════════════════════════
-  // 🧪 FUNC: crear usuario y generar JWT
+  // 🧪 FUNC: crear usuario administrador con jwt
   // ════════════════════════════════════════════════
-  async create(createUserDto: CreateUserDto) {
+  async createUser(createUserDto: CreateUserDto) {
 
     try {
       
-      const { id_genero, password, confirmPassword, email, nombre } = createUserDto;
+      const { password, confirmPassword, email, nombre } = createUserDto;
       //desestructuracion de argumentos, separa id_genero del resto de argumentos
   
       const genero = await this.generoRepository.findOneBy({id: createUserDto.id_genero});
+
+      const verRole = await this.rolesRepository.findOneBy({ rolNombre: 'usuario' })
 
       if(password !== confirmPassword)
         throw new BadRequestException('Las contraseñas no coinciden!!')
       
       if(!genero)
         throw new NotFoundException('Genero no encontrado!!');
+
+      if (!verRole) {
+        throw new NotFoundException('¡Rol no encontrado!');
+      }
   
       const nuevoUsuario = this.userRepository.create({
         nombre,
         email,
         password: bcrypt.hashSync(password, 10),
-        genero
+        genero, 
+        role: verRole
       });
+
       await this.userRepository.save(nuevoUsuario);
       
       //Genera un token 
       const token = this.getJwtToken({ id: nuevoUsuario.id});
-
-      console.log(this.userRepository);
       
-      console.log(token);
-      
+      const {password: _, role, ...usuario} = nuevoUsuario;
 
-      return {
-        ...nuevoUsuario,
-        token //devuelve el token
+      return {...usuario, token};  //devuelve el token
   
-      };
     } catch (error) {
+
       this.handleDBErrors(error);
     }
   }
 
-  findAll(user: User) {
-    return this.userRepository.find();
+  
+  // ════════════════════════════════════════════════
+  // 🧪 FUNC: Obtener a todos los usuarios
+  // ════════════════════════════════════════════════
+  async findAll(userActual: User) {
+
+    // trae el nombre del rol
+    const isAdmin = userActual.role.rolNombre
+
+    if (isAdmin === 'admin') {
+      // Si es admin, trae TODOS
+      return await this.userRepository.find({
+        relations: ['role'], // Si necesitas los roles también
+      });
+    } else {
+      // Si no es admin, trae todos MENOS los admins
+      return await this.userRepository.createQueryBuilder('user')
+        .leftJoinAndSelect('user.role', 'role')
+        .where('role.rolNombre != :admin', { admin: 'admin' })
+        .getMany();
+    }
+  }
+
+
+  // ════════════════════════════════════════════════
+  // 🧪 FUNC: Obtener usuario por ID  y token
+  // ════════════════════════════════════════════════
+  async findById(id: string, user: User) {
+    // Primero buscamos el usuario solicitado
+    const usuario = await this.userRepository.findOne({
+      where: { id },
+      relations: { genero: true }
+    });
+  
+    if (!usuario) {
+      throw new NotFoundException(`El usuario con el id ${id} no se encontró`);
+    }
+
+  
+    return {
+      ...usuario,
+      token: this.getJwtToken({ id: user.id }), // Token del que pidió el dato
+    };
   }
 
 
@@ -83,24 +130,34 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({
       where: { email },
-      select: { email: true, password: true, id: true }
+      select: [ 'email', 'password', 'id', 'activo']
     });
 
-    if(!user)
-      throw new UnauthorizedException('Correo o contraseña incorrectos' );
+    if(!user || !bcrypt.compareSync(password, user.password))
+      throw new UnauthorizedException('Credenciales incorrectas' );
 
-    if( !bcrypt.compareSync(password, user.password) )
-      throw new UnauthorizedException('Correo o contraseña incorrectos');
+    // Validar si el usuario está activo
+    if (!user.activo) {
+      throw new UnauthorizedException('El usuario ya no está activo!!');
+    }
+
+    // Generar token (sin incluir la contraseña)
+    const payload = { id: user.id };
+    const token = this.getJwtToken(payload);
 
     return {
-      ...user,
-      token: this.getJwtToken({ id: user.id })
+        ...payload,
+        email: user.email,
+        token,
     };
 
   }
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
+
+
+
+  update(uuid: string, updateAuthDto: UpdateAuthDto) {
+    return `This action updates a #${uuid} auth`;
   }
 
   remove(id: number) {
@@ -122,6 +179,58 @@ export class AuthService {
 
     throw new InternalServerErrorException('Please check server logs');
     
+  }
+
+
+  // ════════════════════════════════════════════════
+  // 🧪 FUNC: crear usuario administrador con jwt
+  // ════════════════════════════════════════════════
+  async createAdmin(createUserDto: CreateUserDto) {
+
+    try {
+      
+      const { password, confirmPassword, email, nombre } = createUserDto;
+      //desestructuracion de argumentos, separa id_genero del resto de argumentos
+  
+      const genero = await this.generoRepository.findOneBy({id: createUserDto.id_genero});
+
+      const role = await this.rolesRepository.findOneBy({ rolNombre: 'admin' })
+
+      if(password !== confirmPassword)
+        throw new BadRequestException('Las contraseñas no coinciden!!')
+      
+      if(!genero)
+        throw new NotFoundException('Genero no encontrado!!');
+
+      if (!role) {
+        throw new NotFoundException('¡Rol no encontrado!');
+      }
+  
+      const nuevoUsuario = this.userRepository.create({
+        nombre,
+        email,
+        password: bcrypt.hashSync(password, 10),
+        genero, 
+        role // aqui tengo el error
+      });
+
+      console.log(nuevoUsuario);
+      
+      await this.userRepository.save(nuevoUsuario);
+      
+      //Genera un token 
+      const token = this.getJwtToken({ id: nuevoUsuario.id});
+      
+
+      return {
+        ...nuevoUsuario,
+        token //devuelve el token
+  
+      };
+    } catch (error) {
+
+      this.handleDBErrors(error);
+    }
   }
 
 }

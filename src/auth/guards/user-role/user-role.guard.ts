@@ -1,54 +1,53 @@
-import { BadRequestException, CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Observable } from 'rxjs';
-import { META_ROLES } from 'src/auth/decorators/task-role-protected.decorator';
-import { User } from 'src/auth/entities/user.entity';
-import { UserTask } from 'src/user-task/user-task.entity';
-import { Repository } from 'typeorm';
+import { BadRequestException, CanActivate, ExecutionContext, ForbiddenException, Injectable } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { InjectRepository } from "@nestjs/typeorm";
+import { META_ROLES } from "src/auth/decorators/roles-protected.decorator";
+import { User } from "src/auth/entities/user.entity";
+import { Repository } from "typeorm";
+
+
 
 @Injectable()
 export class UserRoleGuard implements CanActivate {
-
   constructor(
     private readonly reflector: Reflector,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
-    @InjectRepository(UserTask)
-    private readonly userTaskRepository: Repository<UserTask>
+  async canActivate(context: ExecutionContext): Promise<boolean> {
 
-  ){}
-
- async canActivate(
-    context: ExecutionContext,
-  ): Promise<boolean> {
+    const requiredRoles = this.reflector.get<string[]>(META_ROLES, context.getHandler());
     
-    const taskRole: string[] = this.reflector.get(META_ROLES, context.getHandler());
+    // Si no hay roles requeridos, permite acceso
+    if (!requiredRoles || requiredRoles.length === 0) return true;
 
-    //Si no hay ningun rol definido, permite el acceso
-    if( !taskRole || taskRole.length === 0  ) return true;
-    
     const req = context.switchToHttp().getRequest();
-
     const user = req.user as User;
 
-    if( !user )
-      throw new BadRequestException('Usuaro no encontrado!!');
+    if (!user) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
 
-    // Obtener los roles del usuario desde la tabla userTask
-    const userTasks = await this.userTaskRepository.find({ 
-      where: { user: { id: user.id } },
-      select: ['role'] // solo el campo role
+    // Obtener el usuario con sus roles cargados
+    const userWithRoles = await this.userRepository.findOne({
+      where: { id: user.id },
+      relations: ['role'],
     });
 
-    // Verificar si el usuario tiene al menos uno de los roles requeridos
-    const hasRequiredRole = userTasks.some(userRole => 
-      taskRole.includes(userRole.role)
-    );
+    if (!userWithRoles) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
 
-    if(!hasRequiredRole) {
+    // obtiene el noombre del rol de usuario
+    const userRoleName = userWithRoles.role.rolNombre;
+
+    const hasRequiredRole = requiredRoles.includes(userRoleName);
+
+    if (!hasRequiredRole) {
       throw new ForbiddenException(
-        `El usuario ${user.nombre} no tiene los roles necesarios. ` +
-        `Roles requeridos: [${taskRole.join(', ')}]`
+        `El usuario ${userWithRoles.nombre} no tiene los roles necesarios. ` +
+        `Roles requeridos: [${requiredRoles.join(', ')}]`
       );
     }
 

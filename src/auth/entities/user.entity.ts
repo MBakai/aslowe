@@ -1,8 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, Unique, ManyToOne, JoinColumn, BeforeInsert, BeforeUpdate, OneToMany, ManyToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Unique, ManyToOne, JoinColumn, BeforeInsert, BeforeUpdate, OneToMany, ManyToMany, JoinTable } from 'typeorm';
 
 import { Task } from 'src/tasks/entities/task.entity';
 import { Genero } from 'src/genero/entities/genero.entitys';
-import { UserTask } from 'src/user-task/user-task.entity';
+import { Roles } from 'src/roles/entities/roles.entity';
+import { Colaborador } from 'src/colaboradores/entities/colaborador.entity';
+import { Subtask } from 'src/sub-task/entities/sub-task.entity';
 
 @Entity('user')
 @Unique(['email'])
@@ -12,7 +14,7 @@ export class User {
   id: string;
 
   @Column('text')
-  nombre: string;
+  nombre: string; 
 
   @Column('text')
   email: string;
@@ -22,23 +24,47 @@ export class User {
   })
   password: string;
 
+  @Column('bool',{
+    default: true
+  })
+  activo: boolean;
+
   @ManyToOne(
     () => Genero,
     genero  => genero.users)
   @JoinColumn({ name: 'id_genero' })
   genero: Genero;
 
-  // Tareas creadas por el usuario 
+  @ManyToOne(
+    () => Roles,
+    role => role.users,
+    { eager: true }
+  )
+  @JoinColumn({ name: 'role_id' }) 
+  role: Roles;
+
+  // Tareas creadas por el usuario  
   @OneToMany(
     () => Task,
     (task) => task.creador)
   crearTasks: Task[];
 
-  
+  @ManyToMany(
+    () => Subtask,
+    subtask => subtask.asignados
+  )
+  subtasksAsignadas: Subtask[];
+
   @OneToMany(
-    () => UserTask,
-    (userTask) => userTask.user)
-  userTasks: UserTask[];
+    () => Colaborador,
+     (amistad) => amistad.solicitante)
+  sentCollabRequests: Colaborador[];
+
+  @OneToMany(
+    () => Colaborador,
+     (amistad) => amistad.destinatario)
+  receivedCollabRequests: Colaborador[];
+
 
 
   @BeforeInsert()

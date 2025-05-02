@@ -1,10 +1,10 @@
-import { Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Estados } from '../../estados/entities/estados.entity';
 import { User } from "src/auth/entities/user.entity";
-import { UserTask } from "src/user-task/user-task.entity";
+import { Subtask } from "src/sub-task/entities/sub-task.entity";
 
 @Entity()
-export class Task {
+export class Task { 
 
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -22,17 +22,22 @@ export class Task {
     estados: Estados;
 
     // Relación con el creador de la tarea
-    @ManyToOne(
-        () => User,
-         (user) => user.crearTasks)
-    @JoinColumn({name:' user_id '})
-    creador: User; // ¡Este es el campo que faltaba!
+    @ManyToOne(() => User)
+    @JoinColumn({ name: 'creador_id' })
+    creador: User;
 
-    // Relación con User
     @OneToMany(
-        () => UserTask,
-        (userTask) => userTask.task
-      )
-      userTasks: UserTask[]; // Usuarios que pueden editar la tarea
+        () => Subtask,
+         subtask => subtask.task)
+    subtasks: Subtask[];
+
+    @CreateDateColumn()
+    createdAt: Date;
+
+    @UpdateDateColumn()
+    updatedAt: Date;
+
+    @Column({ nullable: true })
+    completedAt: Date;
 
 }
