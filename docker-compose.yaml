@@ -1,7 +1,7 @@
 
   services:
     db:
-      image: postgres:16.2-alpine  # Imagen más reciente y liviana
+      image: postgres:16.2-alpine  
       container_name: aslowe
       restart: always
       ports:
